@@ -88,7 +88,19 @@ class Module(Thread):
         message = self._incoming_buffer.get()
         header_length = 4  # Specify command string length
 
-        if len(message) >= header_length:
+        if self._state == "DATA" and self._input_loop:
+            if message != ".":  # check for CRLF
+                mailbox = self._mailbox_filename(self._client_recipient)  # Create mailbox file, then write to and close it.
+                f = open("MailBox\\" + mailbox + ".txt", "a+")
+                f.write(message + "\n")
+                f.close()
+            else:
+                self._create_message("250 OK")
+                print("DATA WRITTEN TO FILE")
+                self._input_loop = False
+                self._state = "RSET"
+
+        elif len(message) >= header_length:
             self._module_processor(message[0:header_length], message[header_length:])  # Separate command and message
 
     def _mailbox_filename(self, addr):
@@ -134,16 +146,6 @@ class Module(Thread):
                (_address_end >= 0) and \
                (_address_begin < _address_at) and \
                (_address_at < _address_end)
-
-    def _write_to_mailbox(self, message):
-        mailbox = self._mailbox_filename(self._client_recipient_recipient)
-        if message != ".":  # checks for CRLF, then writes messages to the mailbox
-            f.write(message + "\n")
-            f.close()  # Close the mailbox
-        else:
-            print("MESSAGE WRITTEN TO FILE")
-            self._create_message("250 OK")
-            self._state = "RSET"
 
 # Commands Processed Here
     def _module_processor(self, command, message):
@@ -193,22 +195,13 @@ class Module(Thread):
             # Checks to see if there are valid addresses, then writes the message to mailbox and moves to next state.
             if self._state == "DATA":
                 if self._client_sent_from != "" and self._client_recipient != "":
-                    mailbox = self._mailbox_filename(self._client_recipient_recipient)
+                    self._create_message("354: START MAIL INPUT; END WITH ""'.'""")
+                    self._input_loop = True
+                    mailbox = self._mailbox_filename(self._client_recipient)
                     f = open("MailBox\\" + mailbox + ".txt", "a+")
                     f.write("FROM: " + self._client_sent_from + "\n")
                     f.write("TO: " + self._client_recipient + "\n")
-                    f.close()  # Close the mailbox
-                    self._create_message("354: START MAIL INPUT; END WITH ""'.'"" ON A NEW LINE")
-                    transferring_message_content = true
-
-                    if message != ".":  # checks for CRLF, then writes messages to the mailbox
-                        f = open("MailBox\\" + mailbox + ".txt", "a+")
-                        f.write(message + "\n")
-                        f.close()  # Close the mailbox
-                    else:
-                        print("MESSAGE WRITTEN TO FILE")
-                        self._create_message("250 OK")
-                        self._state = "RSET"
+                    f.close()
                 else:
                     self._create_message("501: SYNTAX ERROR IN PARAMETERS OR ARGUMENTS (EMPTY ADDRESS)")
                     print("NO ADDRESS TO WRITE")
@@ -231,7 +224,7 @@ class Module(Thread):
             self.close()
 
         elif command == "HELP":
-            self._create_message(f"214 This is a help message: {self._commandlist}")
+            self._create_message(f"214 This is a help message: \n{self._commandlist}")
             print("RECEIVED A HELP")
         else:
             self._create_message("500 INVALID COMMAND")

@@ -1,0 +1,6 @@
+FROM: user1@urdomain.com
+TO: user500@domain.com
+Hello, my name is Sam. 
+Welcome to my mail server, I hope you enjoy. 
+Kind Regards,
+Sam Herod
