@@ -1,0 +1,10 @@
+COMMANDS -- 		HELO	0
+                        MAIL	0
+                        RCPT	0
+                        DATA	0
+                        RSET	0
+                        NOOP	1
+                        QUIT	0
+			HELP	1
+
+STATE MACHINE --	IMPLEMENT	0

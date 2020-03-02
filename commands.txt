@@ -1,0 +1,105 @@
+HELO @ S:250 
+	E: 500, 501, 504
+
+MAIL @ S:250 
+	E: 552, 451, 452, 550, 553, 503
+
+RCPT @ S:250, 251
+	E550, 551, 552, 553, 450, 451, 452, 503, 550
+
+DATA @ I:354 -> data -> S:250
+	IE: 451, 554, 503
+	SE: 552, 554, 451, 452
+
+RSET @ S: 250
+
+NOOP @ S: 250
+
+HELP @ S: 211, 214
+	E: 502, 504
+
+QUIT @ S: 221
+
+S: success
+E: ERROR
+I: Intialize 
+
+====================================
+https://tools.ietf.org/html/rfc821
+====================================
+structure and Commenting 10%
+RFC821 Complience 30%
+RFC5321 Complience 10%
+serevr storage 10%
+shared mailbow 10%
+Authentication 20%
+Auditing 10%
+
+====================================================
+
+Reply Codes in Numeric Order
+
+211 System status, or system help reply
+      214 Help message
+         (Information on how to use the receiver or the meaning of a
+         particular non-standard command; this reply is useful only
+         to the human user)
+
+      220 <domain> Service ready
+
+      221 <domain> Service closing transmission channel
+
+      250 Requested mail action okay, completed
+
+      251 User not local; will forward to <forward-path>
+         (See section 3.4)
+
+      252 Cannot VRFY user, but will accept message and attempt
+         delivery
+         (See section 3.5.3)
+
+      354 Start mail input; end with <CRLF>.<CRLF>
+
+=========================================================================
+
+Simple Mail Transfer Protocol
+
+421 <domain> Service not available, closing transmission channel
+         (This may be a reply to any command if the service knows it
+         must shut down)
+
+      450 Requested mail action not taken: mailbox unavailable
+         (e.g., mailbox busy)
+
+      451 Requested action aborted: local error in processing
+
+      452 Requested action not taken: insufficient system storage
+
+      500 Syntax error, command unrecognized
+         (This may include errors such as command line too long)
+
+      501 Syntax error in parameters or arguments
+
+      502 Command not implemented (see section 4.2.4)
+
+      503 Bad sequence of commands
+
+      504 Command parameter not implemented
+
+      550 Requested action not taken: mailbox unavailable
+         (e.g., mailbox not found, no access, or command rejected
+         for policy reasons)
+
+      551 User not local; please try <forward-path>
+         (See section 3.4)
+
+      552 Requested mail action aborted: exceeded storage allocation
+
+      553 Requested action not taken: mailbox name not allowed
+         (e.g., mailbox syntax incorrect)
+
+      554 Transaction failed  (Or, in the case of a connection-opening
+          response, "No SMTP service here")
+=============================================
+in process response of the SMTPClientLib.py that is where the commands are sent just fyi
+===================================================
