@@ -83,6 +83,8 @@ class Module (Thread):
         header_length = 3
         if len(message) >= header_length:
             print("FROM SERVER: ", message[0:header_length ], message[header_length :])
+            if message[0:3] == "354":
+                print("Continue Message \n")
 
     def close(self):
         print("closing connection to", self._addr)

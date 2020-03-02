@@ -136,17 +136,14 @@ class Module(Thread):
                (_address_at < _address_end)
 
     def _write_to_mailbox(self, message):
-
         mailbox = self._mailbox_filename(self._client_recipient_recipient)
-        f = open("MailBox\\" + mailbox + ".txt", "a+")
-        f.write("FROM: " + self._client_sent_from + "\n")
-        f.write("TO: " + self._client_recipient + "\n")
         if message != ".":  # checks for CRLF, then writes messages to the mailbox
             f.write(message + "\n")
             f.close()  # Close the mailbox
         else:
             print("MESSAGE WRITTEN TO FILE")
             self._create_message("250 OK")
+            self._state = "RSET"
 
 # Commands Processed Here
     def _module_processor(self, command, message):
@@ -160,7 +157,7 @@ class Module(Thread):
         elif command == "HELO":
             self._create_message("250 OK")
             print("Received a HELO")
-            self._state == "MAIL"
+            self._state = "MAIL"
 
         elif command == "MAIL":
             # Checks for a valid address, if so, stores sender address and moves to next state.
@@ -168,8 +165,8 @@ class Module(Thread):
                 if self._validate_address(message):
                     self._client_sent_from = self._get_address(message)
                     self._create_message("250 OK")
-                    print("SENT")
-                    self._state == "RCPT"
+                    print("MAIL FROM ", repr(self._client_sent_from))
+                    self._state = "RCPT"
                 else:
                     self._create_message("501: SYNTAX ERROR (BAD ADDRESS)")
                     print("ADDRESS INVALID")
@@ -179,12 +176,12 @@ class Module(Thread):
 
         elif command == "RCPT":
             # Similarly checks for valid address, and if so, stores the recipient address and moves to next state.
-            if self._state == "MAIL":
+            if self._state == "RCPT":
                 if self._validate_address(message):
                     self._client_recipient = self._get_address(message)
                     self._create_message("250 OK")
-                    print("RECEIVED")
-                    self._state == "DATA"
+                    print("RCPT RECEIVED")
+                    self._state = "DATA"
                 else:
                     self._create_message("501: SYNTAX ERROR (BAD ADDRESS)")
                     print("ADDRESS INVALID")
@@ -196,9 +193,22 @@ class Module(Thread):
             # Checks to see if there are valid addresses, then writes the message to mailbox and moves to next state.
             if self._state == "DATA":
                 if self._client_sent_from != "" and self._client_recipient != "":
+                    mailbox = self._mailbox_filename(self._client_recipient_recipient)
+                    f = open("MailBox\\" + mailbox + ".txt", "a+")
+                    f.write("FROM: " + self._client_sent_from + "\n")
+                    f.write("TO: " + self._client_recipient + "\n")
+                    f.close()  # Close the mailbox
                     self._create_message("354: START MAIL INPUT; END WITH ""'.'"" ON A NEW LINE")
-                    self._write_to_mailbox
-                    self._state == "RSET"
+                    transferring_message_content = true
+
+                    if message != ".":  # checks for CRLF, then writes messages to the mailbox
+                        f = open("MailBox\\" + mailbox + ".txt", "a+")
+                        f.write(message + "\n")
+                        f.close()  # Close the mailbox
+                    else:
+                        print("MESSAGE WRITTEN TO FILE")
+                        self._create_message("250 OK")
+                        self._state = "RSET"
                 else:
                     self._create_message("501: SYNTAX ERROR IN PARAMETERS OR ARGUMENTS (EMPTY ADDRESS)")
                     print("NO ADDRESS TO WRITE")

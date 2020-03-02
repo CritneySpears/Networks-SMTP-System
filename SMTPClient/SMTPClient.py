@@ -36,7 +36,7 @@ class NWSThreadedClient ():
         self.start_connection(self._host, self._port)
 
         while True:
-            useraction = input("Enter a string")
+            useraction = input("Enter a command: \n")
             self._module.create_message(useraction)
 
 
