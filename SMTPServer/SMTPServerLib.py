@@ -169,13 +169,15 @@ class Module(Thread):
             print("Received a NOOP")
 
         elif command == "HELO":
+            self._state = "HELO"
             self._create_message("250 OK")
             print("Received a HELO")
-            self._state == "MAIL"
+            self._helo_complete = True
 
         elif command == "MAIL":
             # Checks for a valid address, if so, stores sender address and moves to next state.
-            if self._state == "MAIL":
+            self._state = "MAIL"
+            if self._helo_complete:
                 if self._validate_address(message):
                     self._client_sent_from = self._get_address(message)
                     self._create_message("250 OK")
