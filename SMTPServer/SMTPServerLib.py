@@ -14,12 +14,14 @@ class Module(Thread):
         self._selector = selectors.DefaultSelector()
         self._sock = sock
         self._addr = addr
-        self._state = "HELO"  # Start State
         self._command_list = "COMMANDS: \n--HELO, \n--MAIL, \n--RCPT, \n--DATA, \n--RSET, \n--NOOP, \n--QUIT, \n--HELP"
+        self._state = "Default"  # Start State
         self._write_to_mailbox = False
         self._helo_complete = False
         self._mail_complete = False
         self._rcpt_complete = False
+        self._current_mailbox = ""
+        self._mail_buffer = ""
         self._client_sent_from = ""
         self._client_recipient = ""
 
@@ -99,7 +101,17 @@ class Module(Thread):
                 self._module_processor(message[0:header_length],
                                        message[header_length:])  # Separate command and message
         else:
-            self._write_to_mailbox(self, message)
+            if self._write_to_mailbox:
+                if message != ".":  # checks for CRLF, then adds message contents to a buffer.
+                    self._mail_buffer = self._mail_buffer + "\r\n" + message
+                else:
+                    f = open("MailBox\\" + self._current_mailbox + ".txt",
+                             "a+")  # writes buffer contents to file on CRLF.
+                    f.write(self._mail_buffer + "\r\n")
+                    f.close()
+                    print("MESSAGE WRITTEN TO FILE")
+                    self._create_message("250 OK")
+                    self._write_to_mailbox = False
 
     def _mailbox_filename(self, addr):
 
@@ -146,19 +158,6 @@ class Module(Thread):
                 (_address_at < _address_end):
             return True
 
-    def _write_to_mailbox(self, message):
-
-        mailbox = self._mailbox_filename(self._client_recipient_recipient)
-        f = open("MailBox\\" + mailbox + ".txt", "a+")
-        f.write("FROM: " + self._client_sent_from + "\n")
-        f.write("TO: " + self._client_recipient + "\n")
-        if message != ".":  # checks for CRLF, then writes messages to the mailbox
-            f.write(message + "\n")
-            f.close()  # Close the mailbox
-        else:
-            print("MESSAGE WRITTEN TO FILE")
-            self._create_message("250 OK")
-
     # Commands Processed Here
     def _module_processor(self, command, message):
 
@@ -182,7 +181,7 @@ class Module(Thread):
                     self._client_sent_from = self._get_address(message)
                     self._create_message("250 OK")
                     print("SENT")
-                    self._state == "RCPT"
+                    self._mail_complete = True
                 else:
                     self._create_message("501: SYNTAX ERROR (BAD ADDRESS)")
                     print("ADDRESS INVALID")
@@ -192,12 +191,13 @@ class Module(Thread):
 
         elif command == "RCPT":
             # Similarly checks for valid address, and if so, stores the recipient address and moves to next state.
-            if self._state == "MAIL":
+            self._state = "RCPT"
+            if self._mail_complete:
                 if self._validate_address(message):
                     self._client_recipient = self._get_address(message)
                     self._create_message("250 OK")
                     print("RECEIVED")
-                    self._state == "DATA"
+                    self._rcpt_complete = True
                 else:
                     self._create_message("501: SYNTAX ERROR (BAD ADDRESS)")
                     print("ADDRESS INVALID")
@@ -207,14 +207,17 @@ class Module(Thread):
 
         elif command == "DATA":
             # Checks to see if there are valid addresses, then writes the message to mailbox and moves to next state.
-            if self._state == "DATA":
-                if self._client_sent_from != "" and self._client_recipient != "":
-                    self._create_message("354: START MAIL INPUT; END WITH ""'.'"" ON A NEW LINE")
-                    self._write_to_mailbox = True
-                    self._state == "RSET"
-                else:
-                    self._create_message("501: SYNTAX ERROR IN PARAMETERS OR ARGUMENTS (EMPTY ADDRESS)")
-                    print("NO ADDRESS TO WRITE")
+            self._state = "DATA"
+            if self._rcpt_complete:
+                self._create_message("354: START MAIL INPUT; END WITH ""'.'""")
+                # Create the txt file used to store each recipient's messages.
+                self._current_mailbox = "Mail for " + self._mailbox_filename(self._client_recipient)
+                f = open("MailBox\\" + self._current_mailbox + ".txt", "a+")
+                f.write("FROM: " + self._client_sent_from + "\n")
+                f.write("TO: " + self._client_recipient + "\n")
+                f.close()
+                # Set process response to defer from commands processing to filling the message buffer.
+                self._write_to_mailbox = True
             else:
                 self._create_message("503: BAD SEQUENCE OF COMMANDS")
                 print("COMMAND INVALID")
@@ -223,12 +226,31 @@ class Module(Thread):
             # Clears client data and resets state.
             self._client_recipient = ""
             self._client_sent_from = ""
-            self._state == "HELO"
+            self._state = "Default"
+            self._write_to_mailbox = False
+            self._helo_complete = False
+            self._mail_complete = False
+            self._rcpt_complete = False
+            self._current_mailbox = ""
+            self._mail_buffer = ""
+            self._client_sent_from = ""
+            self._client_recipient = ""
             self._create_message("250 OK")
             print("STATE RESET")
 
         elif command == "QUIT":
-            # Closes.
+            # Closes and resets buffers.
+            self._client_recipient = ""
+            self._client_sent_from = ""
+            self._state = "Default"
+            self._write_to_mailbox = False
+            self._helo_complete = False
+            self._mail_complete = False
+            self._rcpt_complete = False
+            self._current_mailbox = ""
+            self._mail_buffer = ""
+            self._client_sent_from = ""
+            self._client_recipient = ""
             self._create_message("221 SERVICE CLOSING")
             print("QUITTING")
             self.close()

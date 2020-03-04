@@ -17,7 +17,7 @@ class Module (Thread):
         self._addr = addr
         self._incoming_buffer = queue.Queue()
         self._outgoing_buffer = queue.Queue()
-
+        self._is_closed = False
         self.encryption = SMTPClientEncryption.nws_encryption()
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         self._selector.register(self._sock, events, data=None)
@@ -25,7 +25,12 @@ class Module (Thread):
     def run(self):
             try:
                 while True:
-                    events = self._selector.select(timeout=1)
+                    try:
+                        events = self._selector.select(timeout=1)
+                    except OSError:
+                        self._sock.close()
+                        self._is_closed = True
+                        break
                     for key, mask in events:
                         message = key.data
                         try:
@@ -82,7 +87,9 @@ class Module (Thread):
         message = self._incoming_buffer.get()
         header_length = 3
         if len(message) >= header_length:
-            print("FROM SERVER: ", message[0:header_length ], message[header_length :])
+            print("FROM SERVER: ", message[0:header_length], message[header_length:])
+            if '221' in message:
+                self.close()    # close socket on quit response from server. Will cause crash.
 
     def close(self):
         print("closing connection to", self._addr)

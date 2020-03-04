@@ -5,6 +5,9 @@ __status__ = "Development"
 
 import socket
 import selectors
+import time
+import os.path
+from os import path
 
 import SMTPServerLib
 
@@ -22,6 +25,9 @@ class NWSThreadedServer ():
         # Processing Components
         self._modules = []
 
+        if not path.exists("ConnectionHistory"):
+            os.mkdir("ConnectionHistory")
+
     def _configureServer(self):
         self._listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Avoid bind() exception: OSError: [Errno 48] Address already in use
@@ -36,6 +42,15 @@ class NWSThreadedServer ():
     def accept_wrapper(self, sock):
         conn, addr = sock.accept()  # Should be ready to read
         print("accepted connection from", addr)
+
+        # write address of accepted socket to a text file with timestamp
+
+        ts = time.gmtime()
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S", ts)
+        connection_log = "Connection accepted from %s at %s\r\n" % (addr, timestamp)
+        f = open("ConnectionHistory\\Connections.txt", "a")  # File location. Within root directory folder.
+        f.write(connection_log)
+        f.close()
 
         conn.setblocking(False)
         module = SMTPServerLib.Module(conn, addr)
