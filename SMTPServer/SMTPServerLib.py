@@ -14,7 +14,10 @@ class Module(Thread):
         self._sock = sock
         self._addr = addr
         self._state = "HELO"  # Start State
-        self._commandlist = "COMMANDS: \n--HELO, \n--MAIL, \n--RCPT, \n--DATA, \n--RSET, \n--NOOP, \n--QUIT, \n--HELP"
+        self._command_list = "COMMANDS: \n--HELO, \n--MAIL, \n--RCPT, \n--DATA, \n--RSET, \n--NOOP, \n--QUIT, \n--HELP"
+        self._write_to_mailbox = False
+        self._client_sent_from = ""
+        self._client_recipient = ""
 
         self._incoming_buffer = queue.Queue()
         self._outgoing_buffer = queue.Queue()
@@ -197,7 +200,7 @@ class Module(Thread):
             if self._state == "DATA":
                 if self._client_sent_from != "" and self._client_recipient != "":
                     self._create_message("354: START MAIL INPUT; END WITH ""'.'"" ON A NEW LINE")
-                    self._write_to_mailbox
+                    self._write_to_mailbox = True
                     self._state == "RSET"
                 else:
                     self._create_message("501: SYNTAX ERROR IN PARAMETERS OR ARGUMENTS (EMPTY ADDRESS)")
