@@ -7,6 +7,7 @@ import socket
 import selectors
 import SMTPClientLib
 import traceback
+import time
 
 class NWSThreadedClient ():
     def __init__(self, host="127.0.0.1", port=12345):
@@ -36,6 +37,7 @@ class NWSThreadedClient ():
         self.start_connection(self._host, self._port)
 
         while True:
+            time.sleep(1)
             useraction = input("Awaiting Input: ")
             self._module.create_message(useraction)
 

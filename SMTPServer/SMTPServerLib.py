@@ -6,6 +6,7 @@ import SMTPServerEncryption
 from threading import Thread
 from os import path
 
+
 class Module(Thread):
     def __init__(self, sock, addr):
         Thread.__init__(self)
@@ -16,6 +17,9 @@ class Module(Thread):
         self._state = "HELO"  # Start State
         self._command_list = "COMMANDS: \n--HELO, \n--MAIL, \n--RCPT, \n--DATA, \n--RSET, \n--NOOP, \n--QUIT, \n--HELP"
         self._write_to_mailbox = False
+        self._helo_complete = False
+        self._mail_complete = False
+        self._rcpt_complete = False
         self._client_sent_from = ""
         self._client_recipient = ""
 
@@ -90,9 +94,12 @@ class Module(Thread):
     def _process_response(self):
         message = self._incoming_buffer.get()
         header_length = 4  # Specify command string length
-
-        if len(message) >= header_length:
-            self._module_processor(message[0:header_length], message[header_length:])  # Separate command and message
+        if self._state != "DATA":
+            if len(message) >= header_length:
+                self._module_processor(message[0:header_length],
+                                       message[header_length:])  # Separate command and message
+        else:
+            self._write_to_mailbox(self, message)
 
     def _mailbox_filename(self, addr):
 
@@ -115,7 +122,7 @@ class Module(Thread):
         _address_begin = _msg.find("<")
         _address_end = _msg.find(">")
         if (_address_begin >= 0) and \
-            (_address_end >= 0) and \
+                (_address_end >= 0) and \
                 (_address_end > _address_begin):
             return message[_address_begin + 1:_address_end]
         else:
@@ -132,11 +139,12 @@ class Module(Thread):
         #
         #
         #
-        return (_address_begin >= 0) and \
-               (_address_at >= 0) and \
-               (_address_end >= 0) and \
-               (_address_begin < _address_at) and \
-               (_address_at < _address_end)
+        if (_address_begin >= 0) and \
+                (_address_at >= 0) and \
+                (_address_end >= 0) and \
+                (_address_begin < _address_at) and \
+                (_address_at < _address_end):
+            return True
 
     def _write_to_mailbox(self, message):
 
@@ -151,7 +159,7 @@ class Module(Thread):
             print("MESSAGE WRITTEN TO FILE")
             self._create_message("250 OK")
 
-# Commands Processed Here
+    # Commands Processed Here
     def _module_processor(self, command, message):
 
         command = command.upper()  # allow lower case commands
@@ -249,4 +257,3 @@ class Module(Thread):
         finally:
             # Delete reference to socket object for garbage collection
             self._sock = None
-
