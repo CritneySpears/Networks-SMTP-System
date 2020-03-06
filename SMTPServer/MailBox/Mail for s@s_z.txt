@@ -1,0 +1,5 @@
+FROM: d@d.x
+TO: s@s.z
+
+s
+d

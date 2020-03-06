@@ -1,0 +1,5 @@
+FROM: f@f.c
+TO: g@g.v
+
+f
+g

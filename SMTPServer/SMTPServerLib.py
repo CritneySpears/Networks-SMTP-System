@@ -14,8 +14,17 @@ class Module(Thread):
         self._selector = selectors.DefaultSelector()
         self._sock = sock
         self._addr = addr
-        self._command_list = "COMMANDS: \n--HELO, \n--MAIL, \n--RCPT, \n--DATA, \n--RSET, \n--NOOP, \n--QUIT, \n--HELP"
-        self._state = "Default"  # Start State
+        self._command_list = "\nCOMMANDS: " \
+                             "\n--HELO " \
+                             "\n--MAIL <domain> " \
+                             "\n--RCPT <domain>" \
+                             "\n--DATA (begins loop, end with '.')" \
+                             "\n--RSET " \
+                             "\n--NOOP " \
+                             "\n--QUIT " \
+                             "\n--HELP"
+        self._state_reset = "Default"
+        self._state = self._state_reset  # Start State
         self._write_to_mailbox = False
         self._helo_complete = False
         self._mail_complete = False
@@ -96,10 +105,15 @@ class Module(Thread):
     def _process_response(self):
         message = self._incoming_buffer.get()
         header_length = 4  # Specify command string length
+
         if self._state != "DATA":
             if len(message) >= header_length:
                 self._module_processor(message[0:header_length],
                                        message[header_length:])  # Separate command and message
+            else:
+                # handles invalid message header.
+                self._create_message("500 INVALID COMMAND")
+                print("UNKNOWN COMMAND")
         else:
             if self._write_to_mailbox:
                 if message != ".":  # checks for CRLF, then adds message contents to a buffer.
@@ -111,7 +125,8 @@ class Module(Thread):
                     f.close()
                     print("MESSAGE WRITTEN TO FILE")
                     self._create_message("250 OK")
-                    self._write_to_mailbox = False
+                    self._create_message("Resetting...")
+                    self._reset()  # Resets the mail transfer.
 
     def _mailbox_filename(self, addr):
 
@@ -157,6 +172,22 @@ class Module(Thread):
                 (_address_begin < _address_at) and \
                 (_address_at < _address_end):
             return True
+
+    def _reset(self):
+        # Clears client data and resets state.
+        self._client_recipient = ""
+        self._client_sent_from = ""
+        self._state = self._state_reset
+        self._write_to_mailbox = False
+        self._helo_complete = False
+        self._mail_complete = False
+        self._rcpt_complete = False
+        self._current_mailbox = ""
+        self._mail_buffer = ""
+        self._client_sent_from = ""
+        self._client_recipient = ""
+        self._create_message("250 OK")
+        print("STATE RESET")
 
     # Commands Processed Here
     def _module_processor(self, command, message):
@@ -223,20 +254,7 @@ class Module(Thread):
                 print("COMMAND INVALID")
 
         elif command == "RSET":
-            # Clears client data and resets state.
-            self._client_recipient = ""
-            self._client_sent_from = ""
-            self._state = "Default"
-            self._write_to_mailbox = False
-            self._helo_complete = False
-            self._mail_complete = False
-            self._rcpt_complete = False
-            self._current_mailbox = ""
-            self._mail_buffer = ""
-            self._client_sent_from = ""
-            self._client_recipient = ""
-            self._create_message("250 OK")
-            print("STATE RESET")
+            self._reset()
 
         elif command == "QUIT":
             # Closes and resets buffers.
@@ -256,7 +274,7 @@ class Module(Thread):
             self.close()
 
         elif command == "HELP":
-            self._create_message(f"214 This is a help message: {self._commandlist}")
+            self._create_message("214 This is a help message: " + self._command_list)
             print("RECEIVED A HELP")
         else:
             self._create_message("500 INVALID COMMAND")
